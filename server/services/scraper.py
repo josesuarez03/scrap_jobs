@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from models.db_models import Job
+from server.models.job_models import Job
 import time
 
 class JobScraper:
