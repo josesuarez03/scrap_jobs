@@ -45,6 +45,6 @@ class MongoDB:
             raise e
     
     def get_db(self):
-        if not self.db:
+        if self.db is None:  # Cambiado para comparar explícitamente con None
             raise RuntimeError("MongoDB no está inicializada. Asegúrate de llamar a init_app primero.")
         return self.db
