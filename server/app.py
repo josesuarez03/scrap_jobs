@@ -13,7 +13,7 @@ mongodb = MongoDB()
 mongodb.init_app(app)
 
 # Hacer la instancia de db disponible globalmente
-db = mongodb.get_db()
+app.db = mongodb.get_db()
 
 app.register_blueprint(jobs_blueprint)
 
