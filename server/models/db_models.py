@@ -1,5 +1,5 @@
 from pymongo import MongoClient, ASCENDING, DESCENDING
-from pymongo.errors import ConnectionError
+from pymongo.errors import ConnectionFailure  # Cambiado de ConnectionError a ConnectionFailure
 from config import Config
 import logging
 
@@ -38,7 +38,7 @@ class MongoDB:
             print(f"📁 Base de datos: {self.db.name}")
             print(f"📊 Colecciones: {', '.join(self.db.list_collection_names())}")
             
-        except ConnectionError as e:
+        except ConnectionFailure as e:  # Cambiado aquí también
             print("❌ Error al conectar con MongoDB:")
             print(f"Error: {str(e)}")
             print("Asegúrate de que MongoDB está corriendo en " + Config.MONGO_URI)
