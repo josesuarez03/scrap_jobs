@@ -1,23 +1,50 @@
-from datetime import datetime
-from bson import ObjectId
+from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo.errors import ConnectionError
+from config import Config
+import logging
 
-class Job:
-    def __init__(self, title, company, location, description, link, platform, date_posted=None):
-        self.title = title
-        self.company = company
-        self.location = location
-        self.description = description
-        self.link = link
-        self.platform = platform
-        self.date_posted = date_posted or datetime.now()
+class MongoDB:
+    def __init__(self, app=None):
+        self.client = None
+        self.db = None
+        
+        if app is not None:
+            self.init_app(app)
     
-    def to_dict(self):
-        return {
-            "title": self.title,
-            "company": self.company,
-            "location": self.location,
-            "description": self.description,
-            "link": self.link,
-            "platform": self.platform,
-            "date_posted": self.date_posted
-        }
+    def init_app(self, app):
+        try:
+            # Conectar a MongoDB
+            self.client = MongoClient(Config.MONGO_URI)
+            self.db = self.client.jobs_db
+            
+            # Crear colecciones si no existen
+            if 'jobs' not in self.db.list_collection_names():
+                self.db.create_collection('jobs')
+                # Crear índices para la colección jobs
+                self.db.jobs.create_index([("link", ASCENDING)], unique=True)
+                self.db.jobs.create_index([("company", ASCENDING)])
+                self.db.jobs.create_index([("date_posted", DESCENDING)])
+            
+            if 'logs' not in self.db.list_collection_names():
+                self.db.create_collection('logs')
+                # Crear índices para la colección logs
+                self.db.logs.create_index([("timestamp", DESCENDING)])
+                self.db.logs.create_index([("route", ASCENDING)])
+                self.db.logs.create_index([("status_code", ASCENDING)])
+            
+            # Verificar la conexión
+            self.client.admin.command('ping')
+            print("✅ Conexión exitosa a MongoDB")
+            print(f"📁 Base de datos: {self.db.name}")
+            print(f"📊 Colecciones: {', '.join(self.db.list_collection_names())}")
+            
+        except ConnectionError as e:
+            print("❌ Error al conectar con MongoDB:")
+            print(f"Error: {str(e)}")
+            print("Asegúrate de que MongoDB está corriendo en " + Config.MONGO_URI)
+            raise e
+    
+    def get_db(self):
+        if not self.db:
+            raise RuntimeError("MongoDB no está inicializada. Asegúrate de llamar a init_app primero.")
+        return self.db
