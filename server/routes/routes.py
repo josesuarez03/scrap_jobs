@@ -1,20 +1,20 @@
 from flask import Blueprint, jsonify, request
-from pymongo import MongoClient
+from models.db_models import MongoDB
 from services.scraper import JobScraper
 from config import Config
+from utils.decorators import log_route
 import concurrent.futures
 
 jobs_blueprint = Blueprint('jobs', __name__)
-client = MongoClient(Config.MONGO_URI)
-db = client.jobs_db
-jobs_collection = db.jobs
+mongodb = MongoDB()
 
 @jobs_blueprint.route('/api/jobs/scrape', methods=['POST'])
+@log_route
 def scrape_jobs():
+    db = mongodb.get_db()
     scraper = JobScraper()
     all_jobs = []
     
-    # Ejecutar scraping en paralelo
     with concurrent.futures.ThreadPoolExecutor() as executor:
         linkedin_future = executor.submit(scraper.scrape_linkedin, Config.KEYWORDS)
         infojobs_future = executor.submit(scraper.scrape_infojobs, Config.KEYWORDS)
@@ -22,9 +22,8 @@ def scrape_jobs():
         all_jobs.extend(linkedin_future.result())
         all_jobs.extend(infojobs_future.result())
     
-    # Guardar en MongoDB
     for job in all_jobs:
-        jobs_collection.update_one(
+        db.jobs.update_one(
             {"link": job.link},
             {"$set": job.to_dict()},
             upsert=True
@@ -33,12 +32,14 @@ def scrape_jobs():
     return jsonify({"message": f"Scraped and saved {len(all_jobs)} jobs"})
 
 @jobs_blueprint.route('/api/jobs', methods=['GET'])
+@log_route
 def get_jobs():
+    db = mongodb.get_db()
     company_filter = request.args.get('company', '')
     
     query = {}
     if company_filter:
         query['company'] = {'$regex': company_filter, '$options': 'i'}
     
-    jobs = list(jobs_collection.find(query, {'_id': 0}))
+    jobs = list(db.jobs.find(query, {'_id': 0}))
     return jsonify(jobs)
