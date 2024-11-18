@@ -4,6 +4,7 @@ from services.scraper import JobScraper
 from config import Config
 from utils.decorators import log_route
 import concurrent.futures
+from datetime import datetime, timedelta
 
 jobs_blueprint = Blueprint('jobs', __name__)
 mongodb = MongoDB()
@@ -35,11 +36,23 @@ def scrape_jobs():
 @log_route
 def get_jobs():
     db = mongodb.get_db()
-    company_filter = request.args.get('company', '')
+    company = request.args.get('company', '')
+    location = request.args.get('location', '')
+    date_posted = request.args.get('datePosted', '')
     
     query = {}
-    if company_filter:
-        query['company'] = {'$regex': company_filter, '$options': 'i'}
+    if company:
+        query['company'] = {'$regex': company, '$options': 'i'}
+    if location:
+        query['location'] = {'$regex': location, '$options': 'i'}
+    if date_posted:
+        date_filter = {
+            'today': datetime.now() - timedelta(days=1),
+            'week': datetime.now() - timedelta(days=7),
+            'month': datetime.now() - timedelta(days=30)
+        }
+        if date_posted in date_filter:
+            query['date_posted'] = {'$gte': date_filter[date_posted]}
     
     jobs = list(db.jobs.find(query, {'_id': 0}))
     return jsonify(jobs)
