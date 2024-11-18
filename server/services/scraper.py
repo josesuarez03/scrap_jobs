@@ -15,7 +15,7 @@ class JobScraper:
         chrome_options = Options()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')  # Ayuda con problemas de memoria en algunos entornos
+        chrome_options.add_argument('--disable-dev-shm-usage')
         self.driver = webdriver.Chrome(options=chrome_options)
         
         # Configura un tiempo de espera implícito
@@ -39,7 +39,7 @@ class JobScraper:
                 
                 # Esperar a que los elementos de la página estén presentes
                 WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, 'jobs-search__results-list'))
+                    EC.presence_of_element_located((By.CLASS_NAME, 'job-card-container'))
                 )
                 
                 # Esperar un poco más para asegurar la carga de contenido dinámico
@@ -51,19 +51,26 @@ class JobScraper:
                 
                 # Parsear el contenido
                 soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-                job_cards = soup.find_all('div', class_='base-card')
                 
-                print(f"  📄 Encontrados {len(job_cards)} trabajos para '{keyword}'")
+                # Buscar todos los contenedores de trabajos
+                job_containers = soup.find_all('div', class_='job-card-container')
                 
-                for card in job_cards:
+                print(f"  📄 Encontrados {len(job_containers)} trabajos para '{keyword}'")
+                
+                for container in job_containers:
                     try:
-                        title_elem = card.find('h3', class_='base-search-card__title')
-                        company_elem = card.find('h4', class_='base-search-card__subtitle')
-                        location_elem = card.find('span', class_='job-search-card__location')
-                        link_elem = card.find('a', class_='base-card__full-link')
+                        # Buscar el enlace del trabajo
+                        link_elem = container.find('a', class_=['job-card-list__title', 'job-card-list__link'])
                         
-                        if title_elem and company_elem and location_elem and link_elem:
-                            title = title_elem.text.strip()
+                        # Buscar el nombre de la empresa
+                        company_elem = container.find('span', class_='job-card-container__primary-description')
+                        
+                        # Buscar la ubicación
+                        location_elem = container.find('span', dir='ltr')
+                        
+                        # Verificar que todos los elementos existan
+                        if link_elem and company_elem and location_elem:
+                            title = link_elem.text.strip()
                             company = company_elem.text.strip()
                             location = location_elem.text.strip()
                             link = link_elem['href']
@@ -87,7 +94,7 @@ class JobScraper:
                 
         print(f"✅ LinkedIn: Encontrados {len(jobs)} trabajos en total")
         return jobs
-    
+        
     def scrape_infojobs(self, keywords):
         print(f"🔍 Iniciando scraping de InfoJobs...")
         jobs = []
